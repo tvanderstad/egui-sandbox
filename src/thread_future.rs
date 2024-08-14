@@ -24,7 +24,6 @@ impl Future for ThreadFuture {
         if this.join_handle.is_finished() {
             std::task::Poll::Ready(())
         } else {
-            cx.waker().wake_by_ref();
             std::task::Poll::Pending
         }
     }

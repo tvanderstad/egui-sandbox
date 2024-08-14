@@ -17,6 +17,9 @@ struct MyApp {
     // async stuff
     waker: std::task::Waker,
     futures: Vec<futures::future::LocalBoxFuture<'static, ()>>,
+
+    // observability
+    frame_count: usize,
 }
 
 impl MyApp {
@@ -25,12 +28,14 @@ impl MyApp {
         let (tx, rx) = mpsc::channel();
         let futures = Vec::new();
         let waker = futures::task::noop_waker();
+        let frame_count = 0;
         Self {
             label_text,
             tx,
             rx,
             futures,
             waker,
+            frame_count,
         }
     }
 }
@@ -47,7 +52,8 @@ fn main() {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            println!("frame");
+            println!("frame {}", self.frame_count);
+            self.frame_count += 1;
 
             // drive outstanding async tasks without blocking
             let mut i = 0;

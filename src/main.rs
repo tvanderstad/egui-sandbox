@@ -74,15 +74,15 @@ impl eframe::App for MyApp {
             // show the ui
             ui.label(&self.label_text);
             if ui.button("Button").clicked() {
+                let ctx = ctx.clone();
                 let tx = self.tx.clone();
-                let future = button_clicked(ctx.clone(), tx).boxed_local();
-                self.futures.push(future);
+                self.futures.push(arbitrary_task(ctx, tx).boxed_local());
             }
         });
     }
 }
 
-async fn button_clicked(ctx: egui::Context, tx: mpsc::Sender<String>) {
+async fn arbitrary_task(ctx: egui::Context, tx: mpsc::Sender<String>) {
     tx.send("Running...".into()).unwrap();
     {
         thread_future::spawn(&ctx, move || {

@@ -19,7 +19,7 @@ pub fn spawn<F: FnOnce() -> () + Send + 'static>(ctx: &egui::Context, f: F) -> T
 impl Future for ThreadFuture {
     type Output = ();
 
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context) -> std::task::Poll<()> {
+    fn poll(self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context) -> std::task::Poll<()> {
         let this = self.get_mut();
         if this.join_handle.is_finished() {
             std::task::Poll::Ready(())

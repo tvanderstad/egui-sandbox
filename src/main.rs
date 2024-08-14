@@ -3,9 +3,7 @@ use futures::FutureExt;
 use std::sync::mpsc;
 use std::thread; // just used for thread::Sleep()
 use std::time::Duration;
-use thread_future::IntoFutureExt as IntoFuture;
 
-mod repaint_waker;
 mod thread_future;
 
 struct MyApp {
@@ -22,11 +20,11 @@ struct MyApp {
 }
 
 impl MyApp {
-    fn new(ctx: egui::Context) -> Self {
+    fn new() -> Self {
         let label_text = "Ready".into();
         let (tx, rx) = mpsc::channel();
         let futures = Vec::new();
-        let waker = repaint_waker::create(ctx);
+        let waker = futures::task::noop_waker();
         Self {
             label_text,
             tx,
@@ -41,7 +39,7 @@ fn main() {
     eframe::run_native(
         "test",
         eframe::NativeOptions::default(),
-        Box::new(|cc: &eframe::CreationContext| Ok(Box::new(MyApp::new(cc.egui_ctx.clone())))),
+        Box::new(|_cc: &eframe::CreationContext| Ok(Box::new(MyApp::new()))),
     )
     .unwrap();
 }
@@ -49,6 +47,8 @@ fn main() {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            println!("frame");
+
             // drive outstanding async tasks without blocking
             let mut i = 0;
             loop {
@@ -75,29 +75,28 @@ impl eframe::App for MyApp {
             ui.label(&self.label_text);
             if ui.button("Button").clicked() {
                 let tx = self.tx.clone();
-                self.futures.push(button_clicked(tx).boxed_local());
+                let future = button_clicked(ctx.clone(), tx).boxed_local();
+                self.futures.push(future);
             }
         });
     }
 }
 
-async fn button_clicked(tx: mpsc::Sender<String>) {
+async fn button_clicked(ctx: egui::Context, tx: mpsc::Sender<String>) {
     tx.send("Running...".into()).unwrap();
     {
-        thread::spawn(move || {
-            // Simulate more work
+        thread_future::spawn(&ctx, move || {
+            // Simulate work
             thread::sleep(Duration::from_secs(1));
         })
-        .into_future()
         .await;
     }
     tx.send("Still running...".into()).unwrap();
     {
-        thread::spawn(move || {
+        thread_future::spawn(&ctx, move || {
             // Simulate more work
             thread::sleep(Duration::from_secs(1));
         })
-        .into_future()
         .await;
     }
     tx.send("Done!".into()).unwrap();

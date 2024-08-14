@@ -1,7 +1,19 @@
-use std::future::Future;
+use std::{future::Future, thread};
+
+use eframe::egui;
 
 pub struct ThreadFuture {
     join_handle: std::thread::JoinHandle<()>,
+}
+
+pub fn spawn<F: FnOnce() -> () + Send + 'static>(ctx: &egui::Context, f: F) -> ThreadFuture {
+    let ctx = ctx.clone();
+    ThreadFuture {
+        join_handle: thread::spawn(move || {
+            f();
+            ctx.request_repaint();
+        }),
+    }
 }
 
 impl Future for ThreadFuture {
@@ -15,15 +27,5 @@ impl Future for ThreadFuture {
             cx.waker().wake_by_ref();
             std::task::Poll::Pending
         }
-    }
-}
-
-pub trait IntoFutureExt {
-    fn into_future(self) -> impl Future<Output = ()>;
-}
-
-impl IntoFutureExt for std::thread::JoinHandle<()> {
-    fn into_future(self) -> ThreadFuture {
-        ThreadFuture { join_handle: self }
     }
 }

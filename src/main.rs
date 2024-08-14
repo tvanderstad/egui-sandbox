@@ -15,7 +15,6 @@ struct MyApp {
     rx: mpsc::Receiver<String>,
 
     // async stuff
-    waker: std::task::Waker,
     futures: Vec<futures::future::LocalBoxFuture<'static, ()>>,
 
     // observability
@@ -27,14 +26,12 @@ impl MyApp {
         let label_text = "Ready".into();
         let (tx, rx) = mpsc::channel();
         let futures = Vec::new();
-        let waker = futures::task::noop_waker();
         let frame_count = 0;
         Self {
             label_text,
             tx,
             rx,
             futures,
-            waker,
             frame_count,
         }
     }
@@ -61,7 +58,7 @@ impl eframe::App for MyApp {
                 if i >= self.futures.len() {
                     break;
                 }
-                let mut cx = std::task::Context::from_waker(&self.waker);
+                let mut cx = std::task::Context::from_waker(futures::task::noop_waker_ref());
                 match self.futures[i].poll_unpin(&mut cx) {
                     std::task::Poll::Ready(()) => {
                         drop(self.futures.remove(i));

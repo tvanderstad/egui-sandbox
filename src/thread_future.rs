@@ -6,7 +6,7 @@ pub struct ThreadFuture {
     join_handle: std::thread::JoinHandle<()>,
 }
 
-pub fn spawn<F: FnOnce() -> () + Send + 'static>(ctx: &egui::Context, f: F) -> ThreadFuture {
+pub fn spawn<F: FnOnce() + Send + 'static>(ctx: &egui::Context, f: F) -> ThreadFuture {
     let ctx = ctx.clone();
     ThreadFuture {
         join_handle: thread::spawn(move || {

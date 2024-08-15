@@ -92,7 +92,8 @@ async fn arbitrary_task(ctx: egui::Context, tx: mpsc::Sender<String>) {
             // Simulate work
             thread::sleep(Duration::from_secs(1));
         })
-        .await;
+        .await
+        .unwrap();
     }
     tx.send("Still running...".into()).unwrap();
     {
@@ -100,7 +101,8 @@ async fn arbitrary_task(ctx: egui::Context, tx: mpsc::Sender<String>) {
             // Simulate more work
             thread::sleep(Duration::from_secs(1));
         })
-        .await;
+        .await
+        .unwrap();
     }
     tx.send("Done!".into()).unwrap();
 }

@@ -1,39 +1,10 @@
-use eframe::egui;
-use futures::FutureExt;
-use std::sync::mpsc;
-use std::thread; // just used for thread::Sleep()
-use std::time::Duration;
+use eframe::egui::{self, scroll_area, Id, Sense};
 
-mod thread_future;
-
-struct MyApp {
-    // app data
-    label_text: String,
-
-    // communication between the UI and async tasks
-    tx: mpsc::Sender<String>,
-    rx: mpsc::Receiver<String>,
-
-    // async stuff
-    futures: Vec<futures::future::LocalBoxFuture<'static, ()>>,
-
-    // observability
-    frame_count: usize,
-}
+struct MyApp {}
 
 impl MyApp {
     fn new() -> Self {
-        let label_text = "Ready".into();
-        let (tx, rx) = mpsc::channel();
-        let futures = Vec::new();
-        let frame_count = 0;
-        Self {
-            label_text,
-            tx,
-            rx,
-            futures,
-            frame_count,
-        }
+        Self {}
     }
 }
 
@@ -49,60 +20,27 @@ fn main() {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            println!("frame {}", self.frame_count);
-            self.frame_count += 1;
-
-            // drive outstanding async tasks without blocking
-            let mut i = 0;
-            loop {
-                if i >= self.futures.len() {
-                    break;
+            // show ui
+            let maybe_prev_state: Option<scroll_area::State> =
+                ctx.data_mut(|d| d.get_persisted(ui.id().with(Id::new("id"))));
+            let scroll_area_output = egui::ScrollArea::vertical().id_source("id").show(ui, |ui| {
+                for i in 0..100 {
+                    ui.label(format!("label {}", i));
                 }
-                let mut cx = std::task::Context::from_waker(futures::task::noop_waker_ref());
-                match self.futures[i].poll_unpin(&mut cx) {
-                    std::task::Poll::Ready(()) => {
-                        drop(self.futures.remove(i));
-                    }
-                    std::task::Poll::Pending => {
-                        i += 1;
-                    }
+            });
+
+            if let Some(prev_state) = maybe_prev_state {
+                if prev_state.offset != scroll_area_output.state.offset {
+                    println!("scrolled");
                 }
             }
 
-            // process any messages from the async tasks
-            if let Ok(msg) = self.rx.try_recv() {
-                self.label_text = msg;
-            }
-
-            // show the ui
-            ui.label(&self.label_text);
-            if ui.button("Button").clicked() {
-                let ctx = ctx.clone();
-                let tx = self.tx.clone();
-                self.futures.push(arbitrary_task(ctx, tx).boxed_local());
-            }
+            if let Some(pos) = ui
+                .allocate_rect(scroll_area_output.inner_rect, Sense::click())
+                .interact_pointer_pos()
+            {
+                println!("clicked {:?}", pos);
+            };
         });
     }
-}
-
-async fn arbitrary_task(ctx: egui::Context, tx: mpsc::Sender<String>) {
-    tx.send("Running...".into()).unwrap();
-    {
-        thread_future::spawn(&ctx, move || {
-            // Simulate work
-            thread::sleep(Duration::from_secs(1));
-        })
-        .await
-        .unwrap();
-    }
-    tx.send("Still running...".into()).unwrap();
-    {
-        thread_future::spawn(&ctx, move || {
-            // Simulate more work
-            thread::sleep(Duration::from_secs(1));
-        })
-        .await
-        .unwrap();
-    }
-    tx.send("Done!".into()).unwrap();
 }

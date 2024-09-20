@@ -1,10 +1,12 @@
-use eframe::egui::{self, scroll_area, CentralPanel, Frame, Pos2, Rect, Sense};
+use eframe::egui::{self, CentralPanel, Frame};
 
-struct MyApp {}
+struct MyApp {
+    button_id: Option<egui::Id>,
+}
 
 impl MyApp {
     fn new() -> Self {
-        Self {}
+        Self { button_id: None }
     }
 }
 
@@ -27,31 +29,13 @@ impl eframe::App for MyApp {
             .show(ctx, |ui| {
                 ctx.style_mut(|s| s.spacing.item_spacing = egui::vec2(0.0, 0.0));
 
-                let available_size = ui.available_size();
-
-                // show ui
-                let scroll_area_id = ui.id().with(egui::Id::new("id"));
-                let maybe_prev_state: Option<scroll_area::State> =
-                    ui.data_mut(|d| d.get_persisted(scroll_area_id));
-
-                let scroll_area_output =
-                    egui::ScrollArea::vertical().id_source("id").show(ui, |ui| {
-                        for i in 0..100 {
-                            ui.label(format!("label {}", i));
-                        }
-
-                        let rect = Rect::from_min_size(Pos2::ZERO, available_size);
-                        let response = ui.allocate_rect(rect, Sense::click());
-                        if let Some(pos) = response.interact_pointer_pos() {
-                            println!("clicked {:?}", pos);
-                        };
-                    });
-
-                if let Some(prev_state) = maybe_prev_state {
-                    if prev_state.offset != scroll_area_output.state.offset {
-                        println!("scrolled");
-                    }
+                if self.button_id.is_some()
+                    && ctx.interaction_snapshot(|r| r.clicked) == self.button_id
+                {
+                    println!("clicked");
                 }
+
+                self.button_id = Some(ui.button("button").id);
             });
     }
 }
